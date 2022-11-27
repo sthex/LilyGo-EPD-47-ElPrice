@@ -1,0 +1,6 @@
+{
+    "board": "esp32:esp32:esp32",
+    "configuration": "PSRAM=enabled,PartitionScheme=huge_app,CPUFreq=240,FlashMode=qio,FlashFreq=80,FlashSize=4M,UploadSpeed=921600,DebugLevel=none",
+    "sketch": "..\\LilyGo-EPD-47-ElPrice\\LilyGo-EPD-47-ElPrice.ino",
+    "port": "COM11"
+}
