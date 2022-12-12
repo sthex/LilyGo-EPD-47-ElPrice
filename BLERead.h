@@ -1,29 +1,34 @@
 #include "XiomiTemperatur.h"
 
 #define EMPTYBUFF -999 //
-#define BUFFSIZE 636   // 750 @ 10 min. 1556 almost one week each 5 min. Max 4096 byte in RTC
-#define BUFFSIZE3 240  // 288 is 48 hours of 10 min,   overflowed by 228 bytes: 750->636
-
 #define PLOTWIDTH 900
 #define PLOTHEIGHT 300
 #define PLOTSTART_X 19
 #define PLOTSTART_Y 250
 
+#ifdef VVB
+#define BUFFSIZE 636  // 750 @ 10 min. 1556 almost one week each 5 min. Max 4096 byte in RTC
+#define BUFFSIZE3 240 // 288 is 48 hours of 10 min,   overflowed by 228 bytes: 750->636
+RTC_DATA_ATTR int buffIndex3 = 0;
+RTC_DATA_ATTR int16_t buff3[BUFFSIZE3]; // 2016 = one temp each 5 min for one week. Max 4096 byte in RTC
+#else
+#define BUFFSIZE 750 // 750 @ 10 min. 1556 almost one week each 5 min. Max 4096 byte in RTC
+#endif
+
 RTC_DATA_ATTR int buffIndex1 = 0;
 RTC_DATA_ATTR int16_t buff1[BUFFSIZE]; // 2016 = one temp each 5 min for one week. Max 4096 byte in RTC
 RTC_DATA_ATTR int buffIndex2 = 0;
 RTC_DATA_ATTR int16_t buff2[BUFFSIZE]; // 2016 = one temp each 5 min for one week. Max 4096 byte in RTC
-RTC_DATA_ATTR int buffIndex3 = 0;
-RTC_DATA_ATTR int16_t buff3[BUFFSIZE3]; // 2016 = one temp each 5 min for one week. Max 4096 byte in RTC
-RTC_DATA_ATTR int sensCount;			// number of one wire sensors
-RTC_DATA_ATTR int plotNo = 0;			// 1: plot only first sensor.  2: plot only second sensor 0:plot1&2
+
+RTC_DATA_ATTR int sensCount;  // number of one wire sensors
+RTC_DATA_ATTR int plotNo = 0; // 1: plot only first sensor.  2: plot only second sensor 0:plot1&2
 
 RTC_DATA_ATTR float temperature1 = -99.0;
 RTC_DATA_ATTR float temperature2 = -99.0;
 float temperature3 = -99.0;
-float temperature4 = -99.0;
-float temperature5 = -99.0;
-float temperature6 = -99.0;
+// float temperature4 = -99.0;
+// float temperature5 = -99.0;
+// float temperature6 = -99.0;
 
 float tmin1 = 0.0;
 float tmax1 = 0.0;
@@ -48,9 +53,9 @@ void ReadTemperature()
 	temperature1 = Sensors[0].Temperatur / 10.0;
 	temperature2 = Sensors[1].Temperatur / 10.0;
 	temperature3 = Sensors[2].Temperatur / 10.0;
-	temperature4 = Sensors[3].Temperatur / 10.0;
-	temperature5 = Sensors[4].Temperatur / 10.0;
-	temperature6 = Sensors[5].Temperatur / 10.0;
+	// temperature4 = Sensors[3].Temperatur / 10.0;
+	// temperature5 = Sensors[4].Temperatur / 10.0;
+	// temperature6 = Sensors[5].Temperatur / 10.0;
 
 	if (temperature1 > -80.0)
 	{
@@ -82,6 +87,7 @@ void ReadTemperature()
 		buff2[buffIndex2] = EMPTYBUFF;
 	}
 
+#ifdef VVB
 	if (temperature3 > -80.0)
 	{
 		buff3[buffIndex3] = (int16_t)(temperature3 * 10.0);
@@ -96,7 +102,9 @@ void ReadTemperature()
 			buffIndex3 = 0;
 		buff3[buffIndex3] = EMPTYBUFF;
 	}
-	Serial.printf("   Temperatur %7.2f %7.2f   %7.2f %7.2f   %7.2f %7.2f\n", temperature1, temperature2, temperature3, temperature4, temperature5, temperature6);
+#endif
+	// Serial.printf("   Temperatur %7.2f %7.2f   %7.2f %7.2f   %7.2f %7.2f\n", temperature1, temperature2, temperature3,
+	// 			  Sensors[3].Temperatur / 10.0, Sensors[4].Temperatur / 10.0, Sensors[5].Temperatur / 10.0);
 }
 
 #define FONT_24 OpenSans24B
@@ -109,15 +117,18 @@ void clearTempBuff()
 	Serial.println("Empty buffer.");
 	for (int i = 0; i < BUFFSIZE; i++)
 		buff2[i] = buff1[i] = EMPTYBUFF;
+
+#ifdef VVB
 	for (int i = 0; i < BUFFSIZE3; i++)
 		buff3[i] = EMPTYBUFF;
+#endif
 
 #ifdef TEST
 	int num = BUFFSIZE - 1;
 	for (int i = 0; i < num; i++)
 	{
-		buff1[i] = 200 + 20.0 * sin((double)(0.05 * (i & 0xff)));
-		buff2[i] = 0 + (int16_t)(50.0 * cos((double)(0.03 * (i & 0xff))));
+		buff1[i] = 50 + 20.0 * sin((double)(0.05 * (i & 0xff)));
+		buff2[i] = 0 + (int16_t)(10.0 * cos((double)(0.03 * (i & 0xff))));
 	}
 	buffIndex2 = buffIndex1 = num;
 #endif
@@ -448,12 +459,30 @@ void showTemp()
 {
 	plot();
 
-	String alt = String(Sensors[2].Name) + ":" + String(temperature3, 1) + "  " +
-				 String(Sensors[3].Name) + ":" + String(temperature4, 1) + "  " +
-				 String(Sensors[4].Name) + ":" + String(temperature5, 1);
-	//   + "  " + (Sensors[5].Name) + ":" + String(temperature6, 1);
+	// String alt = String(Sensors[2].Name) + ":" + String(Sensors[2].Temperatur / 10.0, 1) + "  " +
+	// 			 String(Sensors[3].Name) + ":" + String(Sensors[3].Temperatur / 10.0, 1) + "  " +
+	// 			 String(Sensors[4].Name) + ":" + String(Sensors[4].Temperatur / 10.0, 1);
+
+	String alt = String(Sensors[2].Name) + ":" + String(Sensors[2].Temperatur / 10.0, 1) + "  " +
+				 String(Sensors[3].Name) + ":" + String(Sensors[3].Temperatur / 10.0, 1) + "  " +
+				 String(Sensors[4].Name) + ":" + String(Sensors[4].Temperatur / 10.0, 1) + "  " +
+				 String(Sensors[5].Name) + ":" + String(Sensors[5].Temperatur / 10.0, 1) + "  " +
+				 String(Sensors[6].Name) + ":" + String(Sensors[6].Temperatur / 10.0, 1) + "  " +
+				 String(Sensors[7].Name) + ":" + String(Sensors[7].Temperatur / 10.0, 1);
 	setFont(OpenSans8B);
 	drawString(20, YEXTRA, alt, LEFT);
+
+	if (azureMode == MODE_ACTIVE)
+		drawString(500, 30, String("Azure"), LEFT);
+	// display.drawBitmap(143, 0, gImage_radio16, 16, 16, GxEPD_BLACK); // 143 2,9',  115 2.13'
+	else if (azureMode == MODE_TWINONLY)
+		drawString(500, 30, String("Azure twin"), LEFT);
+	// display.drawBitmap(143, 0, gImage_radioLow16, 16, 16, GxEPD_BLACK);
+	else if (azureMode == MODE_NOT_TWIN)
+	{
+		drawString(500, 30, String("Azure event"), LEFT);
+		// display.drawBitmap(143, 0, gImage_radioLow16, 16, 16, GxEPD_BLACK);
+	}
 
 	// if (temperature3 > -99.0)
 	// 	drawString(0, YEXTRA, String(Sensors[2].Name) + ":" + String(temperature3, 1), LEFT);
