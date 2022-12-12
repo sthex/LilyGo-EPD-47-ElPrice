@@ -465,24 +465,24 @@ void showTemp()
 
 	String alt = String(Sensors[2].Name) + ":" + String(Sensors[2].Temperatur / 10.0, 1) + "  " +
 				 String(Sensors[3].Name) + ":" + String(Sensors[3].Temperatur / 10.0, 1) + "  " +
-				 String(Sensors[4].Name) + ":" + String(Sensors[4].Temperatur / 10.0, 1) + "  " +
-				 String(Sensors[5].Name) + ":" + String(Sensors[5].Temperatur / 10.0, 1) + "  " +
-				 String(Sensors[6].Name) + ":" + String(Sensors[6].Temperatur / 10.0, 1) + "  " +
-				 String(Sensors[7].Name) + ":" + String(Sensors[7].Temperatur / 10.0, 1);
+				 String(Sensors[4].Name) + ":" + String(Sensors[4].Temperatur / 10.0, 1);
+	//  String(Sensors[5].Name) + ":" + String(Sensors[5].Temperatur / 10.0, 1) + "  " +
+	//  String(Sensors[6].Name) + ":" + String(Sensors[6].Temperatur / 10.0, 1) + "  " +
+	//  String(Sensors[7].Name) + ":" + String(Sensors[7].Temperatur / 10.0, 1);
 	setFont(OpenSans8B);
 	drawString(20, YEXTRA, alt, LEFT);
 
-	if (azureMode == MODE_ACTIVE)
-		drawString(500, 30, String("Azure"), LEFT);
-	// display.drawBitmap(143, 0, gImage_radio16, 16, 16, GxEPD_BLACK); // 143 2,9',  115 2.13'
-	else if (azureMode == MODE_TWINONLY)
-		drawString(500, 30, String("Azure twin"), LEFT);
-	// display.drawBitmap(143, 0, gImage_radioLow16, 16, 16, GxEPD_BLACK);
-	else if (azureMode == MODE_NOT_TWIN)
-	{
-		drawString(500, 30, String("Azure event"), LEFT);
-		// display.drawBitmap(143, 0, gImage_radioLow16, 16, 16, GxEPD_BLACK);
-	}
+	// if (azureMode == MODE_ACTIVE)
+	// 	drawString(500, 30, String("Azure"), LEFT);
+	// // display.drawBitmap(143, 0, gImage_radio16, 16, 16, GxEPD_BLACK); // 143 2,9',  115 2.13'
+	// else if (azureMode == MODE_TWINONLY)
+	// 	drawString(500, 30, String("Azure twin"), LEFT);
+	// // display.drawBitmap(143, 0, gImage_radioLow16, 16, 16, GxEPD_BLACK);
+	// else if (azureMode == MODE_NOT_TWIN)
+	// {
+	// 	drawString(500, 30, String("Azure event"), LEFT);
+	// 	// display.drawBitmap(143, 0, gImage_radioLow16, 16, 16, GxEPD_BLACK);
+	// }
 
 	// if (temperature3 > -99.0)
 	// 	drawString(0, YEXTRA, String(Sensors[2].Name) + ":" + String(temperature3, 1), LEFT);

@@ -534,7 +534,11 @@ void showPrice()
 
     setFont(OpenSans24B);
     drawString(10, 2, "Strømpriser", LEFT);
+#ifdef VVB
     drawString(0, 480, "Ute " + String(temperature1, 1) + "   VVB " + String(temperature3, 1) + " °C", LEFT);
+#else
+    drawString(0, 480, "Ute " + String(temperature1, 1) + " °C", LEFT);
+#endif
     if (vvbOn == true)
         drawString(900, 480, String("På"), RIGHT);
     else

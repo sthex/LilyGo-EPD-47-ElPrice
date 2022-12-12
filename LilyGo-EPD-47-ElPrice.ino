@@ -54,11 +54,11 @@ String Date_str = "-- --- ----";
 int wifi_signal, CurrentHour = 0, CurrentMin = 0, CurrentSec = 0, EventCnt = 0, vref = 1100;
 // //################ PROGRAM VARIABLES and OBJECTS ##########################################
 const char *wifinet[] = {
-    HEX_WIFI_IDM,
-    HEX_WIFI_IDG};
+    HEX_WIFI_IDAud,
+    HEX_WIFI_IDM};
 const char *wifipwd[] = {
-    HEX_WIFI_passwordM,
-    HEX_WIFI_passwordG};
+    HEX_WIFI_passwordAud,
+    HEX_WIFI_passwordM};
 RTC_DATA_ATTR int wifiNum = 0;
 
 long SleepDuration = 10; // 10; // Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour
@@ -81,8 +81,8 @@ GFXfont currentFont;
 uint8_t *framebuffer;
 
 bool rebootRequest = false;
-RTC_DATA_ATTR int azureMode = MODE_NOT_TWIN;
-RTC_DATA_ATTR int azureSendInterval = 60 / SLEEP_MINUTES; // 6/10min
+// RTC_DATA_ATTR int azureMode = MODE_NOT_TWIN;
+// RTC_DATA_ATTR int azureSendInterval = 60 / SLEEP_MINUTES; // 6/10min
 
 RTC_DATA_ATTR bool vvbOn = false;
 RTC_DATA_ATTR int curDisplay = 1; // 0:pris 1:temperature
@@ -225,7 +225,7 @@ void VVB_Off()
 }
 #include "BLERead.h"
 #include "entsoe_price.h"
-#include "Azure.h"
+// #include "Azure.h"
 // #include "espNowPow.h"
 
 #define ONE_MINUTE 60000ul   // 1 Minutes
@@ -248,13 +248,13 @@ void setup()
 
     if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_UNDEFINED)
     {
-        Serial.println("\n***** LilyGo-EPD-47-ElPrice med Azure **** ");
+        Serial.println("\n***** LilyGo-EPD-47-ElPrice Audun **** ");
         clearTempBuff();
         // if (StartWiFi() == WL_CONNECTED && SetupTime() == true)
         // {
         //     Serial.println("Time setup done.");
         // }
-        bootCount = azureSendInterval;
+        // bootCount = azureSendInterval;
     }
 
     if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0)
@@ -316,54 +316,6 @@ void setup()
         }
 
         showPage();
-
-        if (curDisplay == 1 && azureMode >= MODE_ACTIVE && ++bootCount >= azureSendInterval)
-        {
-            bootCount = 0;
-            if (WiFi.status() == WL_CONNECTED ||
-                StartWiFi() == WL_CONNECTED)
-            {
-                Azure.Setup();
-
-                char Twinmessage[MESSAGE_MAX_LEN];
-                snprintf(Twinmessage, MESSAGE_MAX_LEN, "{\"Sensors\": \"%d,%d,%d,%s; %d,%d,%d,%s; %d,%d,%d,%s; %d,%d,%d,%s; %d,%d,%d,%s; %d,%d,%d,%s; %d,%d,%d,%s; %d,%d,%d,%s\"}",
-                         Sensors[0].Temperatur, Sensors[0].Hum, Sensors[0].Batt, Sensors[0].Name,
-                         Sensors[1].Temperatur, Sensors[1].Hum, Sensors[1].Batt, Sensors[1].Name,
-                         Sensors[2].Temperatur, Sensors[2].Hum, Sensors[2].Batt, Sensors[2].Name,
-                         Sensors[3].Temperatur, Sensors[3].Hum, Sensors[3].Batt, Sensors[3].Name,
-                         Sensors[4].Temperatur, Sensors[4].Hum, Sensors[4].Batt, Sensors[4].Name,
-                         Sensors[5].Temperatur, Sensors[5].Hum, Sensors[5].Batt, Sensors[5].Name,
-                         Sensors[6].Temperatur, Sensors[6].Hum, Sensors[6].Batt, Sensors[6].Name,
-                         Sensors[7].Temperatur, Sensors[7].Hum, Sensors[7].Batt, Sensors[7].Name);
-
-                if (azureMode == MODE_NOT_TWIN || azureMode == MODE_ACTIVE)
-                {
-                    Azure.Send(Twinmessage);
-                    delay(500);
-                }
-                if (azureMode == MODE_TWINONLY || azureMode == MODE_ACTIVE)
-                {
-                    Esp32MQTTClient_ReportState(Twinmessage);
-                    delay(500);
-                }
-
-                for (int i = 0; i < 15; i++)
-                {
-                    Azure.Check();
-                    delay(500);
-                }
-                delay(500);
-
-                if (WiFi.status() == WL_CONNECTED)
-                    Azure.Disconnect();
-                delay(500);
-            }
-
-            if (rebootRequest)
-            {
-                ESP.restart();
-            }
-        }
         BeginSleep();
     }
     lastTime = millis();
@@ -400,8 +352,8 @@ void loop()
         }
         else if (curDisplay == 1)
         {
-            if (azureMode < MODE_NOT_TWIN)
-                azureMode++;
+            // if (azureMode < MODE_NOT_TWIN)
+            //     azureMode++;
         }
         Serial.println("Button 2 pressed. Increase hours");
         showPage();
@@ -424,8 +376,8 @@ void loop()
         }
         else if (curDisplay == 1)
         {
-            if (azureMode > 0)
-                azureMode--;
+            // if (azureMode > 0)
+            //     azureMode--;
         }
         Serial.println("Button 3 pressed. Decrease hours");
         showPage();
