@@ -2,7 +2,7 @@
 
 #define EMPTYBUFF -999 //
 #define PLOTWIDTH 900
-#define PLOTHEIGHT 300
+#define PLOTHEIGHT 290
 #define PLOTSTART_X 19
 #define PLOTSTART_Y 250
 
@@ -12,7 +12,8 @@
 RTC_DATA_ATTR int buffIndex3 = 0;
 RTC_DATA_ATTR int16_t buff3[BUFFSIZE3]; // 2016 = one temp each 5 min for one week. Max 4096 byte in RTC
 #else
-#define BUFFSIZE 750 // 750 @ 10 min. 1556 almost one week each 5 min. Max 4096 byte in RTC
+// #define BUFFSIZE 1024 // 1024 @ 15 min. 1556 eq. 5.5 days. Max 4096 byte in RTC
+#define BUFFSIZE 750 // 750 @ 10 min. 1556 eq. 5.5 days. Max 4096 byte in RTC
 #endif
 
 RTC_DATA_ATTR int buffIndex1 = 0;
@@ -21,7 +22,7 @@ RTC_DATA_ATTR int buffIndex2 = 0;
 RTC_DATA_ATTR int16_t buff2[BUFFSIZE]; // 2016 = one temp each 5 min for one week. Max 4096 byte in RTC
 
 RTC_DATA_ATTR int sensCount;  // number of one wire sensors
-RTC_DATA_ATTR int plotNo = 0; // 1: plot only first sensor.  2: plot only second sensor 0:plot1&2
+RTC_DATA_ATTR int plotNo = 2; // 1: plot only first sensor.  2: plot only second sensor 0:plot1&2
 
 RTC_DATA_ATTR float temperature1 = -99.0;
 RTC_DATA_ATTR float temperature2 = -99.0;
@@ -110,7 +111,7 @@ void ReadTemperature()
 #define FONT_24 OpenSans24B
 #define FONT_12 OpenSans12B
 
-//#define TEST
+// #define TEST
 
 void clearTempBuff()
 {
@@ -250,20 +251,23 @@ void plot()
 		const int minX = PLOTSTART_X;
 		const int maxX = PLOTSTART_X + PLOTWIDTH;
 		const int minY = PLOTSTART_Y;
-		const int maxY = PLOTSTART_Y + PLOTHEIGHT; // max 128
+		const int maxY = PLOTSTART_Y + PLOTHEIGHT; // max 540
 		int min1 = 999, max1 = -999, min2 = 999, max2 = -999;
 		int num = 0;
-		for (int i = buffIndex1 - 1; num < BUFFSIZE; i--)
+		for (int i = buffIndex1 - 1; num < BUFFSIZE; i--) // Finn min/max
 		{
 			if (i < 0)
 				i = BUFFSIZE - 1;
-			if (buff1[i] == EMPTYBUFF)
-				break;
-			if (buff1[i] < min1)
-				min1 = buff1[i];
-			if (buff1[i] > max1)
-				max1 = buff1[i];
-			if (plotNo != 1) // Plot graf for t1 only
+			if (plotNo != 2) // Plot graf for t1
+			{
+				if (buff1[i] == EMPTYBUFF)
+					break;
+				if (buff1[i] < min1)
+					min1 = buff1[i];
+				if (buff1[i] > max1)
+					max1 = buff1[i];
+			}
+			if (plotNo != 1) // Plot graf for t2
 			{
 				if (buff2[i] == EMPTYBUFF)
 					break;
@@ -289,19 +293,19 @@ void plot()
 		tmin2 = min2 / 10.0;
 		tmax2 = max2 / 10.0;
 		Serial.printf("1: index=%d, num=%d\n", buffIndex1, num);
-		if (num < 3)
-			return;
+		// if (num < 3)
+		// return;
 
 		// display.setFont(FONT_9);
 		// displayTextAt(0, 30, "Min:" + String(min1 / 10.0, 1) + "C");
 		// displayTextAt(0, 15, "Max:" + String(max1 / 10.0, 1) + "C");
 		setFont(OpenSans8B);
-		double span = SLEEP_MINUTES * num;
+		double span = SLEEP_MINUTES * BUFFSIZE - 1; // før var det dynamisk med SLEEP_MINUTES*num;
 		double dx = (double)(maxX - minX) / (double)span;
 #pragma region hour grid
 		int time = 1;
-		int pxTime = 60 * dx; // one hour
-		for (int i = maxX - pxTime; i > minX; i -= pxTime)
+		int pxTime = 60 * dx;							   // one hour
+		for (int i = maxX - pxTime; i > minX; i -= pxTime) // plot tid
 		{
 			if (time % 24 == 0)
 			{
@@ -318,9 +322,9 @@ void plot()
 				// display.drawPixel(i, y, Black);
 			}
 			else if (time % 6 == 0)
-				drawLine(i, maxY - 8, i, maxY + 8, Black);
+				drawLine(i, maxY - 16, i, maxY, Black);
 			else if (pxTime > 1)
-				drawLine(i, maxY - 4, i, maxY + 4, Black);
+				drawLine(i, maxY - 8, i, maxY, Black);
 			time++;
 		}
 
@@ -342,17 +346,22 @@ void plot()
 		}
 		else
 		{
-			int minT = -10 + ((min1 < min2) ? min1 : min2);
-			int maxT = 10 + ((max1 > max2) ? max1 : max2);
+			int minT = -5 + ((min1 < min2) ? min1 : min2);
+			int maxT = 5 + ((max1 > max2) ? max1 : max2);
+			if (maxT - minT < 25)
+			{
+				minT -= 20;
+				maxT += 20;
+			}
 
 			double dy1 = (double)(maxY - minY) / (double)(max1 - min1);
 			double dy2 = (double)(maxY - minY) / (double)(max2 - min2);
 			double dy = (double)(maxY - minY) / (double)(maxT - minT);
 			setFont(OpenSans8B);
-			Serial.printf("min1 =%d max1 =%d min2 =%d max2 =%d \n", min1, max1, min2, max2);
-			Serial.printf("minT =%d maxT =%d dy =%f\n", minT, maxT, dy);
+			// Serial.printf("min1 =%d max1 =%d min2 =%d max2 =%d \n", min1, max1, min2, max2);
+			// Serial.printf("minT =%d maxT =%d dy =%f\n", minT, maxT, dy);
 
-#pragma region Temerature grid
+#pragma region Temerature Y grid
 
 			drawLine(minX - 1, minY, minX - 1, maxY, Black); // y axis past
 			drawLine(maxX - 1, minY, maxX - 1, maxY, Black); // y axis now
@@ -365,7 +374,7 @@ void plot()
 					epd_draw_hline(minX, y - 1, maxX - minX, Black, framebuffer);
 					epd_draw_hline(minX, y, maxX - minX, Black, framebuffer);
 					epd_draw_hline(minX, y + 1, maxX - minX, Black, framebuffer);
-					drawString(minX - 10, y + 2, String((int)(tens / 10)), LEFT);
+					drawString(minX + 3, y - 15, String((int)(tens / 10)), LEFT);
 
 					// for (int x = minX - 1; x < maxX; x += 2)
 					// 	drawPixel(x, y, Black); // x axis
@@ -380,7 +389,7 @@ void plot()
 					int y = (int)(maxY - (tens - minT) * dy);
 					epd_draw_hline(minX, y, maxX - minX, Black, framebuffer);
 					epd_draw_hline(minX, y - 1, maxX - minX, Black, framebuffer);
-					drawString(minX - 10, y + 2, String((int)(tens / 10)), LEFT);
+					drawString(minX + 3, y - 15, String((int)(tens / 10)), LEFT);
 
 					// for (int x = minX - 1; x < maxX; x += 4)
 					// 	drawPixel(x, y, Black); // x axis
@@ -390,6 +399,7 @@ void plot()
 				}
 			}
 			if (maxT - minT < 80)
+			{
 				for (int tens = -300; tens < maxT; tens += 10)
 				{
 					if (tens > minT && tens < maxT)
@@ -398,8 +408,10 @@ void plot()
 						epd_draw_hline(minX, y, maxX - minX, Grey, framebuffer);
 						// for (int x = minX - 1; x < maxX; x += 8)
 						// 	drawPixel(x, y, Black); // x axis
+						drawString(minX + 3, y - 15, String((int)(tens / 10)), LEFT);
 					}
 				}
+			}
 #pragma endregion
 
 			if (plotNo != 2) // Plot graf for t1

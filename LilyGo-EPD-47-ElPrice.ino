@@ -20,7 +20,7 @@
 
 #define SCREEN_WIDTH EPD_WIDTH
 #define SCREEN_HEIGHT EPD_HEIGHT
-#define SLEEP_MINUTES 10
+#define SLEEP_MINUTES 15
 
 #define MODE_OFFLINE 0  // No wifi or Azure
 #define MODE_ACTIVE 1   // Send event and twin to Azure
@@ -61,9 +61,9 @@ const char *wifipwd[] = {
     HEX_WIFI_passwordG};
 RTC_DATA_ATTR int wifiNum = 0;
 
-long SleepDuration = 10; // 10; // Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour
-int WakeupHour = 8;      // Wakeup after 07:00 to save battery power
-int SleepHour = 23;      // Sleep  after 23:00 to save battery power
+long SleepDuration = SLEEP_MINUTES; // Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour
+int WakeupHour = 8;                 // Wakeup after 07:00 to save battery power
+int SleepHour = 23;                 // Sleep  after 23:00 to save battery power
 long StartTime = 0;
 long SleepTimer = 0;
 long Delta = 30; // ESP32 rtc speed compensation, prevents display at xx:59:yy and then xx:00:yy (one minute later) to save power
@@ -93,7 +93,7 @@ RTC_DATA_ATTR int bootCount;
 void BeginSleep()
 {
     epd_poweroff_all();
-    SleepTimer = SleepDuration * 60 - 21; //
+    SleepTimer = SleepDuration * 60 - 7; // use 5.5 sek for just read temp. 11.3 for also report to azure
     // UpdateLocalTime();
     // SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec)) + Delta; // Some ESP32 have a RTC that is too fast to maintain accurate time, so add an offset
     esp_sleep_enable_ext0_wakeup((gpio_num_t)BUTTON_1, LOW);
@@ -133,7 +133,7 @@ uint8_t StartWiFi()
     Serial.printf("Connecting to %s ", wifinet[wifiNum]);
     WiFi.begin(wifinet[wifiNum], wifipwd[wifiNum]);
     int i = 0;
-    while (WiFi.status() != WL_CONNECTED)
+    while (WiFi.status() != WL_CONNECTED && ++i < 60)
     {
         delay(500);
         Serial.print(".");
@@ -144,10 +144,6 @@ uint8_t StartWiFi()
                 wifiNum = 0;
             Serial.printf("\nConnecting to %s ", wifinet[wifiNum]);
             WiFi.begin(wifinet[wifiNum], wifipwd[wifiNum]);
-        }
-        else if (i > 60)
-        {
-            Serial.println("WiFi connection *** FAILED ***");
         }
     }
     Serial.println("");
