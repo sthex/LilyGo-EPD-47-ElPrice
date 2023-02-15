@@ -1,4 +1,7 @@
-// #define VVB          // Defined if control and temperature for VVB
+#define VVB // Defined if control and temperature for VVB
+// #define AZURE
+#define SØRÅSEN
+#define SLEEP_MINUTES 10
 #define Y_BATTERY 20 // 20 or 480
 
 #include <Arduino.h>           // In-built
@@ -20,7 +23,6 @@
 
 #define SCREEN_WIDTH EPD_WIDTH
 #define SCREEN_HEIGHT EPD_HEIGHT
-#define SLEEP_MINUTES 15
 
 #define MODE_OFFLINE 0  // No wifi or Azure
 #define MODE_ACTIVE 1   // Send event and twin to Azure
@@ -221,7 +223,9 @@ void VVB_Off()
 }
 #include "BLERead.h"
 #include "entsoe_price.h"
+#ifdef AZURE
 #include "Azure.h"
+#endif
 // #include "espNowPow.h"
 
 #define ONE_MINUTE 60000ul   // 1 Minutes
@@ -244,7 +248,7 @@ void setup()
 
     if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_UNDEFINED)
     {
-        Serial.println("\n***** LilyGo-EPD-47-ElPrice med Azure **** ");
+        Serial.println("\n***** LilyGo-EPD-47-ElPrice **** ");
         clearTempBuff();
         // if (StartWiFi() == WL_CONNECTED && SetupTime() == true)
         // {
@@ -313,6 +317,7 @@ void setup()
 
         showPage();
 
+#ifdef AZURE
         if (curDisplay == 1 && azureMode >= MODE_ACTIVE && ++bootCount >= azureSendInterval)
         {
             bootCount = 0;
@@ -360,6 +365,8 @@ void setup()
                 ESP.restart();
             }
         }
+#endif
+
         BeginSleep();
     }
     lastTime = millis();

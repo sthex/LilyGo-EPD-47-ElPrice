@@ -12,7 +12,6 @@
 RTC_DATA_ATTR int buffIndex3 = 0;
 RTC_DATA_ATTR int16_t buff3[BUFFSIZE3]; // 2016 = one temp each 5 min for one week. Max 4096 byte in RTC
 #else
-// #define BUFFSIZE 1024 // 1024 @ 15 min. 1556 eq. 5.5 days. Max 4096 byte in RTC
 #define BUFFSIZE 750 // 750 @ 10 min. 1556 eq. 5.5 days. Max 4096 byte in RTC
 #endif
 
@@ -22,7 +21,7 @@ RTC_DATA_ATTR int buffIndex2 = 0;
 RTC_DATA_ATTR int16_t buff2[BUFFSIZE]; // 2016 = one temp each 5 min for one week. Max 4096 byte in RTC
 
 RTC_DATA_ATTR int sensCount;  // number of one wire sensors
-RTC_DATA_ATTR int plotNo = 2; // 1: plot only first sensor.  2: plot only second sensor 0:plot1&2
+RTC_DATA_ATTR int plotNo = 0; // 1: plot only first sensor.  2: plot only second sensor 0:plot1&2
 
 RTC_DATA_ATTR float temperature1 = -99.0;
 RTC_DATA_ATTR float temperature2 = -99.0;
@@ -470,20 +469,30 @@ void plot()
 void showTemp()
 {
 	plot();
-
-	// String alt = String(Sensors[2].Name) + ":" + String(Sensors[2].Temperatur / 10.0, 1) + "  " +
-	// 			 String(Sensors[3].Name) + ":" + String(Sensors[3].Temperatur / 10.0, 1) + "  " +
-	// 			 String(Sensors[4].Name) + ":" + String(Sensors[4].Temperatur / 10.0, 1);
-
-	String alt = String(Sensors[2].Name) + ":" + String(Sensors[2].Temperatur / 10.0, 1) + "  " +
-				 String(Sensors[3].Name) + ":" + String(Sensors[3].Temperatur / 10.0, 1) + "  " +
-				 String(Sensors[4].Name) + ":" + String(Sensors[4].Temperatur / 10.0, 1) + "  " +
-				 String(Sensors[5].Name) + ":" + String(Sensors[5].Temperatur / 10.0, 1) + "  " +
-				 String(Sensors[6].Name) + ":" + String(Sensors[6].Temperatur / 10.0, 1) + "  " +
-				 String(Sensors[7].Name) + ":" + String(Sensors[7].Temperatur / 10.0, 1);
 	setFont(OpenSans8B);
-	drawString(20, YEXTRA, alt, LEFT);
 
+	int antSensorer = sizeof(Sensors) / sizeof(KnownSensor);
+
+	if (antSensorer >= 7)
+	{
+		String alt = String(Sensors[2].Name) + ":" + String(Sensors[2].Temperatur / 10.0, 1) + "  " +
+					 String(Sensors[3].Name) + ":" + String(Sensors[3].Temperatur / 10.0, 1) + "  " +
+					 String(Sensors[4].Name) + ":" + String(Sensors[4].Temperatur / 10.0, 1) + "  " +
+					 String(Sensors[5].Name) + ":" + String(Sensors[5].Temperatur / 10.0, 1) + "  " +
+					 String(Sensors[6].Name) + ":" + String(Sensors[6].Temperatur / 10.0, 1) + "  " +
+					 String(Sensors[7].Name) + ":" + String(Sensors[7].Temperatur / 10.0, 1);
+		drawString(20, YEXTRA, alt, LEFT);
+	}
+	else if (antSensorer >= 5)
+	{
+		String alt = String(Sensors[2].Name) + ":" + String(Sensors[2].Temperatur / 10.0, 1) + "  " +
+					 String(Sensors[3].Name) + ":" + String(Sensors[3].Temperatur / 10.0, 1) + "  " +
+					 String(Sensors[4].Name) + ":" + String(Sensors[4].Temperatur / 10.0, 1);
+
+		drawString(20, YEXTRA, alt, LEFT);
+	}
+
+#ifdef AZURE
 	if (azureMode == MODE_ACTIVE)
 		drawString(500, 30, String("Azure"), LEFT);
 	// display.drawBitmap(143, 0, gImage_radio16, 16, 16, GxEPD_BLACK); // 143 2,9',  115 2.13'
@@ -495,6 +504,7 @@ void showTemp()
 		drawString(500, 30, String("Azure event"), LEFT);
 		// display.drawBitmap(143, 0, gImage_radioLow16, 16, 16, GxEPD_BLACK);
 	}
+#endif
 
 	// if (temperature3 > -99.0)
 	// 	drawString(0, YEXTRA, String(Sensors[2].Name) + ":" + String(temperature3, 1), LEFT);
