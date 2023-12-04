@@ -253,8 +253,6 @@ bool getPriceData(WiFiClientSecure &client, const String &yyyyMMdd, const String
     client.stop(); // close connection before sending a new request
     HTTPClient http;
 
-    // https: // web-api.tp.entsoe.eu/api?documentType=A44&in_Domain=10YNO-1--------2&out_Domain=10YNO-1--------2&periodStart={datestring}0000&periodEnd={datestring}2300&securityToken=2111eeb9-6459-41cc-b77f-42df76b28f91
-
     String uri = "https://web-api.tp.entsoe.eu/api?documentType=A44&in_Domain=10YNO-1--------2&out_Domain=10YNO-1--------2&periodStart=" +
                  yyyyMMdd + "0000&periodEnd=" + yyyyMMddEnd + "2300&securityToken=" + ENTSOE_SecurityToken;
 
