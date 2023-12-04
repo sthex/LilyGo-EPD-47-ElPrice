@@ -1,3 +1,7 @@
+#define VVB // Defined if control and temperature for VVB
+// #define AZURE
+#define SØRÅSEN
+#define SLEEP_MINUTES 10
 #define Y_BATTERY 20 // 20 or 480
 
 #include <Arduino.h>           // In-built
@@ -12,14 +16,18 @@
 #include <HTTPClient.h> // In-built
 
 #include <WiFi.h> // In-built
-#include <WiFiClientSecure.h>
+// #include <WiFiClientSecure.h>
 #include <SPI.h>  // In-built
 #include <time.h> // In-built
 #include "tid.h"
 
 #define SCREEN_WIDTH EPD_WIDTH
 #define SCREEN_HEIGHT EPD_HEIGHT
-#define SLEEP_MINUTES 10
+
+#define MODE_OFFLINE 0  // No wifi or Azure
+#define MODE_ACTIVE 1   // Send event and twin to Azure
+#define MODE_TWINONLY 2 // Send twin to Azure
+#define MODE_NOT_TWIN 4 // Send only event to Azure
 
 #define BUTTON_0 0
 #define BUTTON_1 35
@@ -55,9 +63,9 @@ const char *wifipwd[] = {
     HEX_WIFI_passwordG};
 RTC_DATA_ATTR int wifiNum = 0;
 
-long SleepDuration = 10; // 60; // Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour
-int WakeupHour = 8;      // Wakeup after 07:00 to save battery power
-int SleepHour = 23;      // Sleep  after 23:00 to save battery power
+long SleepDuration = SLEEP_MINUTES; // Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour
+int WakeupHour = 8;                 // Wakeup after 07:00 to save battery power
+int SleepHour = 23;                 // Sleep  after 23:00 to save battery power
 long StartTime = 0;
 long SleepTimer = 0;
 long Delta = 30; // ESP32 rtc speed compensation, prevents display at xx:59:yy and then xx:00:yy (one minute later) to save power
@@ -69,23 +77,28 @@ long Delta = 30; // ESP32 rtc speed compensation, prevents display at xx:59:yy a
 // #include "opensans18b.h"
 #include "opensans24b.h"
 #include "hzwnn_96.h"
-// #include "FreeSerifBold120pt7b.h"
+                 // #include "FreeSerifBold120pt7b.h"
 
 GFXfont currentFont;
 uint8_t *framebuffer;
 
+bool rebootRequest = false;
+RTC_DATA_ATTR int azureMode = MODE_NOT_TWIN;
+RTC_DATA_ATTR int azureSendInterval = 60 / SLEEP_MINUTES; // 6/10min
+
 RTC_DATA_ATTR bool vvbOn = false;
-RTC_DATA_ATTR int curDisplay = 0; // 0:pris 1:temperature
+RTC_DATA_ATTR int curDisplay = 1; // 0:pris 1:temperature
 RTC_DATA_ATTR char currentYYYMMDD[9];
 RTC_DATA_ATTR char currentEndYYYMMDD[9];
+RTC_DATA_ATTR int bootCount;
 
 void BeginSleep()
 {
     epd_poweroff_all();
-    UpdateLocalTime();
-    SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec)) + Delta; // Some ESP32 have a RTC that is too fast to maintain accurate time, so add an offset
+    SleepTimer = SleepDuration * 60 - 7; // use 5.5 sek for just read temp. 11.3 for also report to azure
+    // UpdateLocalTime();
+    // SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec)) + Delta; // Some ESP32 have a RTC that is too fast to maintain accurate time, so add an offset
     esp_sleep_enable_ext0_wakeup((gpio_num_t)BUTTON_1, LOW);
-    // esp_sleep_enable_ext1_wakeup((gpio_num_t)BUTTON_3,  ESP_EXT1_WAKEUP_ALL_LOW);
     esp_sleep_enable_timer_wakeup(SleepTimer * 1000000LL); // in Secs, 1000000LL converts to Secs as unit = 1uSec
     Serial.println("Awake for : " + String((millis() - StartTime) / 1000.0, 3) + "-secs");
     Serial.println("Entering " + String(SleepTimer) + " (secs) of sleep time");
@@ -95,7 +108,7 @@ void BeginSleep()
 void QuickSleep() // 1 sec.
 {
     epd_poweroff_all();
-    UpdateLocalTime();
+    // UpdateLocalTime();
     esp_sleep_enable_ext0_wakeup((gpio_num_t)BUTTON_1, LOW);
     esp_sleep_enable_timer_wakeup(1 * 1000000LL); // in Secs, 1000000LL converts to Secs as unit = 1uSec
     Serial.println("Starting quick-sleep.");
@@ -113,16 +126,16 @@ boolean SetupTime()
 uint8_t StartWiFi()
 {
 
-    IPAddress dns(8, 8, 8, 8); // Use Google DNS
-    WiFi.disconnect();
-    WiFi.mode(WIFI_STA); // switch off AP
-    WiFi.setAutoConnect(true);
-    WiFi.setAutoReconnect(true);
+    // IPAddress dns(8, 8, 8, 8); // Use Google DNS
+    // WiFi.disconnect();
+    // WiFi.mode(WIFI_STA); // switch off AP
+    // WiFi.setAutoConnect(true);
+    // WiFi.setAutoReconnect(true);
 
     Serial.printf("Connecting to %s ", wifinet[wifiNum]);
     WiFi.begin(wifinet[wifiNum], wifipwd[wifiNum]);
     int i = 0;
-    while (WiFi.status() != WL_CONNECTED)
+    while (WiFi.status() != WL_CONNECTED && ++i < 60)
     {
         delay(500);
         Serial.print(".");
@@ -133,10 +146,6 @@ uint8_t StartWiFi()
                 wifiNum = 0;
             Serial.printf("\nConnecting to %s ", wifinet[wifiNum]);
             WiFi.begin(wifinet[wifiNum], wifipwd[wifiNum]);
-        }
-        else if (i > 60)
-        {
-            Serial.println("WiFi connection *** FAILED ***");
         }
     }
     Serial.println("");
@@ -156,6 +165,19 @@ uint8_t StartWiFi()
     else
         Serial.println("WiFi connection *** FAILED ***");
     return WiFi.status();
+}
+void DoCommand(const char *cmd)
+{
+    Serial.println("DoCommand");
+
+    String cmdstring(cmd);
+
+    if (cmdstring.indexOf("reboot") >= 0)
+    {
+        ESP.restart();
+    }
+
+    // showTextPage(cmd);
 }
 
 void StopWiFi()
@@ -201,6 +223,9 @@ void VVB_Off()
 }
 #include "BLERead.h"
 #include "entsoe_price.h"
+#ifdef AZURE
+#include "Azure.h"
+#endif
 // #include "espNowPow.h"
 
 #define ONE_MINUTE 60000ul   // 1 Minutes
@@ -218,17 +243,18 @@ void setup()
     pinMode(OUT_VVB, OUTPUT);
     digitalWrite(OUT_VVB, HIGH);
 
-    setenv("TZ", Timezone, 1); // setenv()adds the "TZ" variable to the environment with a value TimeZone, only used if set to 1, 0 means no change
-    tzset();                   // Set the TZ environment variable
+    // setenv("TZ", Timezone, 1); // setenv()adds the "TZ" variable to the environment with a value TimeZone, only used if set to 1, 0 means no change
+    // tzset();                   // Set the TZ environment variable
 
     if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_UNDEFINED)
     {
         Serial.println("\n***** LilyGo-EPD-47-ElPrice **** ");
         clearTempBuff();
-        if (StartWiFi() == WL_CONNECTED && SetupTime() == true)
-        {
-            Serial.println("Time setup done.");
-        }
+        // if (StartWiFi() == WL_CONNECTED && SetupTime() == true)
+        // {
+        //     Serial.println("Time setup done.");
+        // }
+        bootCount = azureSendInterval;
     }
 
     if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0)
@@ -291,6 +317,56 @@ void setup()
 
         showPage();
 
+#ifdef AZURE
+        if (curDisplay == 1 && azureMode >= MODE_ACTIVE && ++bootCount >= azureSendInterval)
+        {
+            bootCount = 0;
+            if (WiFi.status() == WL_CONNECTED ||
+                StartWiFi() == WL_CONNECTED)
+            {
+                Azure.Setup();
+
+                char Twinmessage[MESSAGE_MAX_LEN];
+                snprintf(Twinmessage, MESSAGE_MAX_LEN, "{\"Sensors\": \"%d,%d,%d,%s; %d,%d,%d,%s; %d,%d,%d,%s; %d,%d,%d,%s; %d,%d,%d,%s; %d,%d,%d,%s; %d,%d,%d,%s; %d,%d,%d,%s\"}",
+                         Sensors[0].Temperatur, Sensors[0].Hum, Sensors[0].Batt, Sensors[0].Name,
+                         Sensors[1].Temperatur, Sensors[1].Hum, Sensors[1].Batt, Sensors[1].Name,
+                         Sensors[2].Temperatur, Sensors[2].Hum, Sensors[2].Batt, Sensors[2].Name,
+                         Sensors[3].Temperatur, Sensors[3].Hum, Sensors[3].Batt, Sensors[3].Name,
+                         Sensors[4].Temperatur, Sensors[4].Hum, Sensors[4].Batt, Sensors[4].Name,
+                         Sensors[5].Temperatur, Sensors[5].Hum, Sensors[5].Batt, Sensors[5].Name,
+                         Sensors[6].Temperatur, Sensors[6].Hum, Sensors[6].Batt, Sensors[6].Name,
+                         Sensors[7].Temperatur, Sensors[7].Hum, Sensors[7].Batt, Sensors[7].Name);
+
+                if (azureMode == MODE_NOT_TWIN || azureMode == MODE_ACTIVE)
+                {
+                    Azure.Send(Twinmessage);
+                    delay(500);
+                }
+                if (azureMode == MODE_TWINONLY || azureMode == MODE_ACTIVE)
+                {
+                    Esp32MQTTClient_ReportState(Twinmessage);
+                    delay(500);
+                }
+
+                for (int i = 0; i < 15; i++)
+                {
+                    Azure.Check();
+                    delay(500);
+                }
+                delay(500);
+
+                if (WiFi.status() == WL_CONNECTED)
+                    Azure.Disconnect();
+                delay(500);
+            }
+
+            if (rebootRequest)
+            {
+                ESP.restart();
+            }
+        }
+#endif
+
         BeginSleep();
     }
     lastTime = millis();
@@ -320,8 +396,16 @@ void loop()
             }
             delay(2);
         }
-        if (HoursOn < 24)
-            HoursOn++;
+        if (curDisplay == 0)
+        {
+            if (HoursOn < 24)
+                HoursOn++;
+        }
+        else if (curDisplay == 1)
+        {
+            if (azureMode < MODE_NOT_TWIN)
+                azureMode++;
+        }
         Serial.println("Button 2 pressed. Increase hours");
         showPage();
         lastTime = millis();
@@ -336,9 +420,17 @@ void loop()
             }
             delay(2);
         }
+        if (curDisplay == 0)
+        {
+            if (HoursOn > 0)
+                HoursOn--;
+        }
+        else if (curDisplay == 1)
+        {
+            if (azureMode > 0)
+                azureMode--;
+        }
         Serial.println("Button 3 pressed. Decrease hours");
-        if (HoursOn > 0)
-            HoursOn--;
         showPage();
         lastTime = millis();
     }
@@ -650,7 +742,8 @@ void DisplayGeneralInfoSection()
     // setFont(OpenSans10B);
     // drawString(5, 2, City, LEFT);
     setFont(OpenSans8B);
-    drawString(500, 2, Date_str + "  @   " + Time_str, LEFT);
+    if (curDisplay != 1)
+        drawString(500, 2, Date_str + "  @   " + Time_str, LEFT);
 }
 
 void DrawBattery(int x, int y)

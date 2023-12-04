@@ -116,6 +116,7 @@
                 "C:\\Users\\sthex\\AppData\\Local\\Arduino15\\packages\\esp32\\hardware\\esp32\\1.0.6\\libraries\\WiFiClientSecure\\src",
                 "C:\\Users\\sthex\\AppData\\Local\\Arduino15\\packages\\esp32\\hardware\\esp32\\1.0.6\\libraries\\SPI\\src",
                 "C:\\Users\\sthex\\AppData\\Local\\Arduino15\\packages\\esp32\\hardware\\esp32\\1.0.6\\libraries\\BLE\\src",
+                "C:\\Users\\sthex\\AppData\\Local\\Arduino15\\packages\\esp32\\hardware\\esp32\\1.0.6\\libraries\\AzureIoT\\src",
                 "C:\\Users\\sthex\\AppData\\Local\\Arduino15\\packages\\esp32\\hardware\\esp32\\1.0.6\\libraries\\Wire\\src",
                 "c:\\users\\sthex\\appdata\\local\\arduino15\\packages\\esp32\\tools\\xtensa-esp32-elf-gcc\\1.22.0-97-gc752ad5-5.2.0\\xtensa-esp32-elf\\include\\c++\\5.2.0",
                 "c:\\users\\sthex\\appdata\\local\\arduino15\\packages\\esp32\\tools\\xtensa-esp32-elf-gcc\\1.22.0-97-gc752ad5-5.2.0\\xtensa-esp32-elf\\include\\c++\\5.2.0\\xtensa-esp32-elf",

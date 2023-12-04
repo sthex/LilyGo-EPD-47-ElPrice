@@ -253,7 +253,9 @@ bool getPriceData(WiFiClientSecure &client, const String &yyyyMMdd, const String
     client.stop(); // close connection before sending a new request
     HTTPClient http;
 
-    String uri = "https://transparency.entsoe.eu/api?documentType=A44&in_Domain=10YNO-1--------2&out_Domain=10YNO-1--------2&periodStart=" +
+    // https: // web-api.tp.entsoe.eu/api?documentType=A44&in_Domain=10YNO-1--------2&out_Domain=10YNO-1--------2&periodStart={datestring}0000&periodEnd={datestring}2300&securityToken=2111eeb9-6459-41cc-b77f-42df76b28f91
+
+    String uri = "https://web-api.tp.entsoe.eu/api?documentType=A44&in_Domain=10YNO-1--------2&out_Domain=10YNO-1--------2&periodStart=" +
                  yyyyMMdd + "0000&periodEnd=" + yyyyMMddEnd + "2300&securityToken=" + ENTSOE_SecurityToken;
 
     http.begin(uri, root_ca);
@@ -284,6 +286,7 @@ bool getPriceData(WiFiClientSecure &client, const String &yyyyMMdd, const String
 #define enPLOTSTART_X 19
 #define enPLOTSTART_Y 100
 
+#ifdef VVB
 void plotTpr(int16_t *buff, int minY, int maxY, int minA, int maxA, int maxX, int buffIndex)
 {
     int num = hoursNow * 60.0 / SLEEP_MINUTES;
@@ -357,6 +360,7 @@ void plotTpr(int16_t *buff, int minY, int maxY, int minA, int maxA, int maxX, in
                 Black);
     }
 }
+#endif
 
 void plotPrice()
 {
@@ -382,14 +386,14 @@ void plotPrice()
             int x = minX + i * dx;
             if (i % 6 == 0)
             {
-                drawString(x, minY - 9, String(time), CENTER);
+                drawString(x, minY - 14, String(time), CENTER);
                 drawLine(x - 1, minY, x - 1, maxY + 4, Black);
                 drawLine(x, minY, x, maxY + 4, Black);
                 drawLine(x + 1, minY, x + 1, maxY + 4, Black);
             }
             else if (i % 2 == 0)
             {
-                drawString(x, minY - 9, String(time), CENTER);
+                drawString(x, minY - 14, String(time), CENTER);
                 drawLine(x, minY - 4, x, maxY + 4, Black);
             }
             else
@@ -503,7 +507,7 @@ void plotPrice()
                     drawLine(x + 1, i, x + 1, i + 10, Black);
                 }
                 drawLine(x + 2, minY + 10, x + 2, maxY - 10, Black);
-                epd_fill_triangle(x, minY - 10, x - 10, minY - 20, x + 10, minY - 20, Black, framebuffer);
+                epd_fill_triangle(x, minY - 15, x - 10, minY - 25, x + 10, minY - 25, Black, framebuffer);
                 epd_fill_triangle(x, maxY - 10, x - 10, maxY - 0, x + 10, maxY - 0, Black, framebuffer);
             }
 
@@ -519,7 +523,9 @@ void plotPrice()
                 }
             }
         }
+#ifdef VVB
         plotTpr(buff3, minY, maxY, 100, 600, minX + hoursNow * dx, buffIndex3);
+#endif
     }
 }
 
